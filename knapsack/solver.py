@@ -22,7 +22,7 @@ def solve_it(input_data):
         value = int(parts[0])
         weight = int(parts[1])
         density = float(value)/float(weight)
-        print density
+        # print density
         items.append(Item(i-1, value, weight, density))
 
     # outer variable controls (indexes)
@@ -33,9 +33,10 @@ def solve_it(input_data):
 
     # sort the list of tuples by density so that a new possible max
     # can be guaranteed to be the best available as we iterate through
+    # print ("unsorted:", items)
     items = sorted(items, key=lambda x: x.density, reverse=True)
+    # print ("sorted:", items)
 
-    print items
 
     # We will refer to a new "bag" with each iteration through items
     # the bag variable will be compared to the global maxes at end
@@ -44,11 +45,11 @@ def solve_it(input_data):
         bag_value = 0
         bag_weight = 0
         bag_taken = [0]*len(items)
-        bag_max = 0
+
 
         # Only start adding in the items after the next one up
         # so that we are not trying arrangements that are repeating themselves
-        for j in xrange(i, len(items)):
+        for j in xrange(i.index, len(items)):
             item = items[j]
 
 
@@ -56,16 +57,16 @@ def solve_it(input_data):
             # is even necessary
 
             hopeful = bag_value + item.value * (capacity - bag_weight) / item.weight
-
-
+            # print("i:", i.index, "j:", j)
+            # print("Hopeful:", hopeful)
+            # print("Max:", max)
             # If the new max weight is not larger than our existing best,
             # then we can exit this current loop and try again with
             # a new starting item
             # And of course if it is larger
             if hopeful < max:
                 break
-            else:
-                max = i_max
+
 
             # Here is where items are actually added to the current bag
             # Need to increment current bag.. value, weight
@@ -79,12 +80,16 @@ def solve_it(input_data):
                 break
 
         # Now save the values that are new optimums
-        if bag_max > max:
-            max = bag_max
+        if bag_value > max:
+            max = bag_value
+            taken = bag_taken
+            if bag_weight == capacity:
+                break
+
 
 
     # prepare the solution in the specified output format
-    output_data = str(value) + ' ' + str(0) + '\n'
+    output_data = str(max) + ' ' + str(1) + '\n'
     output_data += ' '.join(map(str, taken))
     return output_data
 
@@ -92,10 +97,10 @@ def solve_it(input_data):
 import sys
 
 if __name__ == '__main__':
-    # if len(sys.argv) > 1:
-    if len(sys.argv) > 0:
-        # file_location = sys.argv[1].strip()
-        file_location = 'data/ks_4_0'
+    if len(sys.argv) > 1:
+    # if len(sys.argv) > 0:
+        file_location = sys.argv[1].strip()
+        # file_location = 'data/ks_45_0'
         input_data_file = open(file_location, 'r')
         input_data = ''.join(input_data_file.readlines())
         input_data_file.close()
