@@ -120,6 +120,8 @@ class Solver:
             self.solve_dfs(board)
         elif method == 'ast':
             self.solve_ast(board)
+        elif method == 'ida':
+            self.solve_ida(board)
         else:
             raise RuntimeError("Method '{0}' is unknown".format(method))
 
@@ -233,6 +235,47 @@ class Solver:
                 #else:
                     #print "Move not allowed ({0}) for state ({1}):".format(move, state_tuple[1])
 
+    def solve_ida(self, board):
+        frontier_map = {} # to avoid keeping track of tuples
+        frontier_map[board] = 0
+        heapq.heappush(self.frontier, (0, board, ''))
+        states_visited = []
+
+        while len(self.frontier):
+            self.max_fringe_size = max(self.max_fringe_size, len(self.frontier))
+            state_tuple = heapq.heappop(self.frontier)
+            state = State(state_tuple[1:])
+            states_visited.append(state_tuple[1])
+            #print "State tuple:", state_tuple
+
+            self.nodes_expanded += 1
+            self.max_search_depth = max(self.max_search_depth, len(state_tuple[2]))
+
+            #print "State Board:", state.board.board
+            #print "State Path:", state.path
+
+            #decide if new board solves problem
+            if state.board.is_complete():
+                self.solution = state
+                break
+
+            #queue neighbor states, if applicable
+            for move in 'RLDU':
+                if state.board.move_allowed(move):
+                    next_board = state.board.get_board_after_move(move)
+                    board = Board(next_board)
+
+                    #same as ast, but uses 100* as cost for longer paths
+                    next_state = (board.get_municipal_priority() + (100 * len(state.path)), next_board, state.path + move)
+                    if next_board not in states_visited and next_board not in frontier_map:
+                        #print "Adding state to frontier:", next_state[0], move
+                        self.frontier.append(next_state)
+                        states_visited.append(next_state[0])
+                    #else:
+                        #print "Cant add move ({0}) for state ({1}):".format(move, next_board)
+                #else:
+                    #print "Move not allowed ({0}) for state ({1}):".format(move, state_tuple[1])
+
 
     def output(self):
         if self.solution == False:
@@ -246,7 +289,7 @@ class Solver:
         print 'search_depth:', len(self.solution.path)
         print 'max_search_depth:', self.max_search_depth
         print 'running_time:', time.clock() - self.time_started
-        print 'max_ram_usage:', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print 'max_ram_usage:', (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/ 1000000.0) # given in bytes
 
 
 if __name__ == "__main__":
