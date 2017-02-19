@@ -18,9 +18,9 @@ class PlayerAI(BaseAI):
         depth = 1
         max_utility = 0
 
-        while ((time.time() - time_started) < .002):
+        while ((time.time() - time_started) < .004):
             # keep incrementings depths until we run out of time
-            move, utility = self.minimax(grid, depth, float("-inf"), float("-inf"))
+            move, utility = self.minimax(grid, depth, float("-inf"), float("inf"))
 
             if (utility > max_utility):
                 max_utility = utility
@@ -41,34 +41,35 @@ class PlayerAI(BaseAI):
             return (0, self.eval(grid))
 
         if (maximize):
-            highest = float("-inf")
+            highest = alpha
             for move in grid.getAvailableMoves():
                 new_grid = grid.clone()
                 new_grid.move(move)
 
-                m, u = self.minimax(new_grid, depth-1, alpha, beta, False)
+                m, u = self.minimax(new_grid, depth-1, highest, beta, False)
 
+                print("util: {}, move: {}, highest: {}, beta: {}".format(u, move, highest, beta))
                 if u > highest:
                     best_move = move
                     highest = u
 
-            return (best_move, highest)
+            return (best_move, min(highest, beta))
         else:
-            lowest = float("inf")
+            lowest = beta
             for move in grid.getAvailableMoves():
                 new_grid = grid.clone()
                 new_grid.move(move)
 
-                m, u = self.minimax(new_grid, depth-1, alpha, beta, True)
-
-                if u < beta:
-                    continue
+                m, u = self.minimax(new_grid, depth-1, alpha, lowest, True)
 
                 if u < lowest:
                     best_move = move
                     lowest = u
 
-            return (best_move, lowest)
+                if lowest < alpha:
+                    continue
+
+            return (best_move, max(lowest, alpha))
 
     def eval(self, grid):
         """
@@ -78,20 +79,20 @@ class PlayerAI(BaseAI):
         """
         max_tile = grid.getMaxTile()
         smoothing_sum, matching_count = self.getGridStats(grid)
-        max_tile_factor = math.log(max_tile, 2)
-        cell_factor = len(grid.getAvailableCells())
-        smoothing_factor = 10*max_tile/smoothing_sum
-        matching_factor = matching_count * matching_count
+        max_tile_factor = 2 * math.log(max_tile, 2)
+        cell_factor = 2 * len(grid.getAvailableCells())
+        smoothing_factor = 3 * math.log(smoothing_sum, 2)
+        matching_factor = 2 * math.log(matching_count, 2)
 
-        #print("max: {}, cell: {}, smoothing: {}, matching: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor))
+        print("max: {}, cell: {}, smoothing: {}, matching: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor))
         return (max_tile_factor + cell_factor + smoothing_factor + matching_factor)
 
     def getGridStats(self, grid):
         """
         Get the sum of absolute value of differences between grid members and neighbors
         """
-        abs_sum = 1
-        matching_count = 0
+        smoothing_sum = 1
+        matching_count = 1
 
         for i in range(len(grid.map) - 1):
             for j in range(len(grid.map[i]) - 1):
@@ -99,11 +100,14 @@ class PlayerAI(BaseAI):
                 right_value = grid.getCellValue((i, j+1))
                 lower_value = grid.getCellValue((i+1, j))
 
-                if (value == right_value):
-                    matching_count += 1
-                if (value == lower_value):
-                    matching_count += 1
+                if (value == right_value and value > 0):
+                    matching_count += right_value
+                if (value == lower_value and value > 0):
+                    matching_count += lower_value
 
-                abs_sum += abs(value - right_value) + abs(value - lower_value)
+                if (i == 0):
+                    smoothing_sum += abs(value - grid.getCellValue((3, j)))
+                if (j == 0):
+                    smoothing_sum += abs(value - grid.getCellValue((i, 3)))
 
-        return (abs_sum, matching_count)
+        return (smoothing_sum, matching_count)
