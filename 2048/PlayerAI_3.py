@@ -78,14 +78,17 @@ class PlayerAI(BaseAI):
         This is the heuristic function that evaluates board states
         """
         max_tile = grid.getMaxTile()
-        smoothing_sum, matching_count = self.getGridStats(grid)
-        max_tile_factor = 2 * math.log(max_tile, 2)
-        cell_factor = 2 * len(grid.getAvailableCells())
+        smoothing_sum, matching_count, outer_score, closeness = self.getGridStats(grid)
+        max_tile_factor = 7 * math.log(max_tile, 2)
+        cell_factor = 8 * len(grid.getAvailableCells())
         smoothing_factor = 3 * math.log(smoothing_sum, 2)
-        matching_factor = 2 * math.log(matching_count, 2)
+        matching_factor = 7 * math.log(matching_count, 2)
+        outer_factor = 5 * math.log(outer_score)
+        closeness_factor = 2 * closeness
+        max_in_corner_factor = 15 * self.isMaxInCorner(grid, max_tile)
 
-        print("max: {}, cell: {}, smoothing: {}, matching: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor))
-        return (max_tile_factor + cell_factor + smoothing_factor + matching_factor)
+        print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor))
+        return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor)
 
     def getGridStats(self, grid):
         """
@@ -93,6 +96,8 @@ class PlayerAI(BaseAI):
         """
         smoothing_sum = 1
         matching_count = 1
+        outer_stats = 0
+        closeness = 0
 
         for i in range(len(grid.map) - 1):
             for j in range(len(grid.map[i]) - 1):
@@ -100,14 +105,39 @@ class PlayerAI(BaseAI):
                 right_value = grid.getCellValue((i, j+1))
                 lower_value = grid.getCellValue((i+1, j))
 
-                if (value == right_value and value > 0):
+                if value == right_value and value > 0:
                     matching_count += right_value
-                if (value == lower_value and value > 0):
+                if value == lower_value and value > 0:
                     matching_count += lower_value
 
-                if (i == 0):
-                    smoothing_sum += abs(value - grid.getCellValue((3, j)))
-                if (j == 0):
-                    smoothing_sum += abs(value - grid.getCellValue((i, 3)))
+                if value > 0 and right_value > 0:
+                    print("log difference: {}".format(abs(math.log(value, 2) - math.log(right_value, 2))))
+                if value > 0 and right_value > 0 and abs(math.log(value, 2) - math.log(right_value, 2)) == 1:
+                    closeness += 1
+                if value > 0 and lower_value > 0 and abs(math.log(value, 2) - math.log(lower_value, 2)) == 1:
+                    closeness += 1
 
-        return (smoothing_sum, matching_count)
+                if i == 0:
+                    smoothing_sum += abs(value - grid.getCellValue((3, j)))
+                    outer_stats += value - grid.getCellValue((1, j))
+                if j == 0:
+                    smoothing_sum += abs(value - grid.getCellValue((i, 3)))
+                    outer_stats += value - grid.getCellValue((i, 1))
+
+                if i == 3:
+                    outer_stats += value - grid.getCellValue((2, j))
+                if j == 3:
+                    outer_stats += value - grid.getCellValue((i, 2))
+
+
+        return (smoothing_sum, matching_count, max(outer_stats, 1), closeness)
+
+    def isMaxInCorner(self, grid, max_value):
+        """
+        Is the max grid value in the corner??
+        Returns: 1 or 0
+        """
+        if grid.getCellValue((0,0)) == max_value or grid.getCellValue((0,3)) == max_value or grid.getCellValue((3,0)) == max_value or grid.getCellValue((3,3)) == max_value:
+            return 1
+
+        return 0
