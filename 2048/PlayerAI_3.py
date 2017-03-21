@@ -77,18 +77,18 @@ class PlayerAI(BaseAI):
 
         This is the heuristic function that evaluates board states
         """
-        max_tile = grid.getMaxTile()
-        smoothing_sum, matching_count, outer_score, closeness = self.getGridStats(grid)
-        max_tile_factor = 7 * math.log(max_tile, 2)
-        cell_factor = 8 * len(grid.getAvailableCells())
-        smoothing_factor = 3 * math.log(smoothing_sum, 2)
-        matching_factor = 7 * math.log(matching_count, 2)
+        max_tile, max_on_side, smoothing_sum, matching_count, outer_score, closeness, utility = self.getGridStats(grid)
+        max_tile_factor = 10 * math.log(max_tile, 2)
+        cell_factor = 10 * len(grid.getAvailableCells())
+        smoothing_factor = 5 * math.log(smoothing_sum, 2)
+        matching_factor = 2 * math.log(matching_count, 2)
         outer_factor = 5 * math.log(outer_score)
-        closeness_factor = 2 * closeness
-        max_in_corner_factor = 15 * self.isMaxInCorner(grid, max_tile)
+        closeness_factor = 5 * closeness
+        utility_factor = -2 * math.log(max(utility, 1))
+        max_in_corner_factor = 25 * max_on_side
 
-        print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor))
-        return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor)
+        print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}, utility: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor, utility_factor))
+        return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor + utility_factor)
 
     def getGridStats(self, grid):
         """
@@ -98,20 +98,37 @@ class PlayerAI(BaseAI):
         matching_count = 1
         outer_stats = 0
         closeness = 0
+        utility = 0
+        max_pos = (0,0)
+        max_tile = grid.getMaxTile()
+        found = False
 
+        # get max tile pos
+        for i in range(len(grid.map) - 1):
+            for j in range(len(grid.map[i]) - 1):
+                if (max_tile == grid.getCellValue((i, j))):
+                    max_pos = (i,j)
+                    found = True
+                    break
+
+            if found:
+                break
+
+        max_on_side = (max_pos[0] == 0 or max_pos[0] == 3 or max_pos[1] == 0 or max_pos[1] == 3)
         for i in range(len(grid.map) - 1):
             for j in range(len(grid.map[i]) - 1):
                 value = grid.getCellValue((i, j))
                 right_value = grid.getCellValue((i, j+1))
                 lower_value = grid.getCellValue((i+1, j))
 
+                if value != max_tile:
+                    utility += self.calculateUtility(value, (i,j), max_tile, max_pos)
+
                 if value == right_value and value > 0:
                     matching_count += right_value
                 if value == lower_value and value > 0:
                     matching_count += lower_value
 
-                if value > 0 and right_value > 0:
-                    print("log difference: {}".format(abs(math.log(value, 2) - math.log(right_value, 2))))
                 if value > 0 and right_value > 0 and abs(math.log(value, 2) - math.log(right_value, 2)) == 1:
                     closeness += 1
                 if value > 0 and lower_value > 0 and abs(math.log(value, 2) - math.log(lower_value, 2)) == 1:
@@ -130,7 +147,7 @@ class PlayerAI(BaseAI):
                     outer_stats += value - grid.getCellValue((i, 2))
 
 
-        return (smoothing_sum, matching_count, max(outer_stats, 1), closeness)
+        return (max_tile, max_on_side, smoothing_sum, matching_count, max(outer_stats, 1), closeness, utility)
 
     def isMaxInCorner(self, grid, max_value):
         """
@@ -141,3 +158,17 @@ class PlayerAI(BaseAI):
             return 1
 
         return 0
+
+    def calculateUtility(self, value, pos, max_value, max_pos):
+        """
+        Get the utility of a spot
+
+        Higher is worse
+        """
+        if value <= 0 or max_value <= 0:
+            return 0
+
+        distance = abs(max_pos[0] - pos[0]) + abs(max_pos[1] - pos[1])
+        log_diff = math.log(max_value, 2) - math.log(value, 2)
+
+        return math.log(value, 2) * abs(distance - log_diff)
