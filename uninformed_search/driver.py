@@ -137,7 +137,7 @@ class Solver:
             state_tuple = self.frontier.pop(0)
             state = State(state_tuple)
             self.nodes_expanded += 1
-            self.max_search_depth = max(self.max_search_depth, len(state_tuple[1]))
+            self.max_search_depth = max(self.max_search_depth, len(state_tuple[1]) + 1)
             states_visited.append(state_tuple[0])
             #print "State Board:", state.board.board
             #print "State Path:", state.path
@@ -281,15 +281,19 @@ class Solver:
         if self.solution == False:
             raise RuntimeError('Unable to complete given board')
 
-        print 'path_to_goal:', self.solution.get_path()
-        print 'cost_of_path:', len(self.solution.path)
-        print 'nodes_expanded:', self.nodes_expanded
-        print 'fringe_size:', len(self.frontier)
-        print 'max_fringe_size:', self.max_fringe_size
-        print 'search_depth:', len(self.solution.path)
-        print 'max_search_depth:', self.max_search_depth
-        print 'running_time:', time.clock() - self.time_started
-        print 'max_ram_usage:', (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/ 1000000.0) # given in bytes
+        output = [
+         'path_to_goal: ' + self.solution.get_path(),
+         'cost_of_path: ' + str(len(self.solution.path)),
+         'nodes_expanded: ' + str(self.nodes_expanded - 1),
+         'search_depth: ' + str(len(self.solution.path)),
+         'max_search_depth: ' + str(self.max_search_depth),
+         'running_time: ' + str(time.clock() - self.time_started),
+         'max_ram_usage:' + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/ 1000000.0)
+        ]
+
+        target = open('output.txt', 'w')
+        target.truncate()
+        target.write('\n'.join(output) + "\n")
 
 
 if __name__ == "__main__":
