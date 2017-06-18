@@ -171,7 +171,7 @@ class Solver:
             states_visited.append(state_tuple[0])
 
             self.nodes_expanded += 1
-            self.max_search_depth = max(self.max_search_depth, len(state_tuple[1]))
+            self.max_search_depth = max(self.max_search_depth, len(state_tuple[1]) + 1)
             #print "State Board:", state.board.board
             #print "State Path:", state.path
 
