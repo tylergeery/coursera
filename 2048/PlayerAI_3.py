@@ -6,6 +6,9 @@ from BaseAI_3 import BaseAI
 class PlayerAI(BaseAI):
     def __init__(self):
         self.iter = 0
+        self.lastMove = 0
+        self.lastVertical = 0
+        self.lastHorizontal = 0
 
     def getMove(self, grid):
         """
@@ -14,62 +17,135 @@ class PlayerAI(BaseAI):
         Makes calls to the recursive minimax algorithm
         """
         time_started = time.time()
-        best_move = 0
+        best_move = None
         depth = 1
         max_utility = 0
 
-        while ((time.time() - time_started) < .004):
+        while ((time.time() - time_started) < .03):
             # keep incrementings depths until we run out of time
-            move, utility = self.minimax(grid, depth, float("-inf"), float("inf"))
+            move, utility = self.maximize(grid, depth, float("-inf"), float("inf"))
 
             if (utility > max_utility):
-                max_utility = utility
-                best_move = move
+                max_utility, best_move = (utility, move)
 
             depth += 1
 
-        print("max depth {}".format(depth))
+        self.registerMove(best_move)
+
+        print("max depth {}, moving {}".format(depth, best_move))
         return move
 
-    def minimax(self, grid, depth, alpha, beta, maximize = True):
+    def getOrderedMoves(self, grid, maxi = True):
         """
-        Recursive function that finds the best grid state out of available moves
-        Will call itsself with a decrementing depth, until depth is 0
+        Get the grid moves ordered for best branch prediction
         """
-        best_move = 0
-        if depth == 0:
-            return (0, self.eval(grid))
+        moves = grid.getAvailableMoves()
+        moves_ordered = []
 
-        if (maximize):
-            highest = alpha
-            for move in grid.getAvailableMoves():
-                new_grid = grid.clone()
-                new_grid.move(move)
+        horizontals = []
+        verticals = []
 
-                m, u = self.minimax(new_grid, depth-1, highest, beta, False)
+        for i in [2,3]:
+            if i in moves:
+                horizontals.append(i)
 
-                print("util: {}, move: {}, highest: {}, beta: {}".format(u, move, highest, beta))
-                if u > highest:
-                    best_move = move
-                    highest = u
+        for i in [0,1]:
+            if i in moves:
+                verticals.append(i)
 
-            return (best_move, min(highest, beta))
+        if self.lastVertical == 2:
+            horizontals.reverse()
+
+        if self.lastHorizontal == 0:
+            verticals.reverse()
+
+        if self.lastMove is not None and self.lastMove >> 1:
+            # last move was horizontal
+            moves_ordered = verticals + horizontals
         else:
-            lowest = beta
-            for move in grid.getAvailableMoves():
-                new_grid = grid.clone()
-                new_grid.move(move)
+            moves_ordered = horizontals + verticals
 
-                m, u = self.minimax(new_grid, depth-1, alpha, lowest, True)
+        # reverse order for lowest expected values first
+        if maxi == False:
+            moves_ordered.reverse()
 
-                if u < lowest:
-                    best_move = move
-                    lowest = u
+        return moves_ordered
 
-                if lowest < alpha:
-                    continue
+    def registerMove(self, move):
+        """
+        Keep the last move recorded for branch prediction
+        """
+        self.lastMove = move
 
-            return (best_move, max(lowest, alpha))
+        if move >> 1:
+            self.lastHorizontal = move
+        else:
+            self.lastVertical = move
+
+    def minimize(self, grid, depth, alpha, beta):
+        """
+        Minimize part of minimax function
+        Acts as a competitor to the user
+        """
+
+        # check for terminal node
+        if depth == 0:
+            return (None, self.eval(grid))
+
+        best_move, min_utility = (None, float("inf"))
+
+        for move in self.getOrderedMoves(grid, False):
+            new_grid = grid.clone()
+            new_grid.move(move)
+
+            tmp, utility = self.maximize(new_grid, depth-1, alpha, beta)
+
+            # set new best case
+            if utility < min_utility:
+                best_move, min_utility = (move, utility)
+
+            # prune branches where maximum utility is under previous min value
+            if min_utility <= alpha:
+                break
+
+            # set a new possible worst (min) case
+            if min_utility < beta:
+                beta = min_utility
+
+        return (best_move, min_utility)
+
+    def maximize(self, grid, depth, alpha, beta):
+        """
+        Maximize part of minimax function
+        Acts in the user's best interest to win the game
+        """
+
+        # check for terminal node
+        if depth == 0:
+            return (None, self.eval(grid))
+
+        best_move, max_utility = (None, float("-inf"))
+
+        for move in self.getOrderedMoves(grid):
+            new_grid = grid.clone()
+            new_grid.move(move)
+
+            tmp, utility = self.minimize(new_grid, depth-1, alpha, beta)
+
+            # set new best case
+            if utility > max_utility:
+                best_move, max_utility = (move, utility)
+
+            # prune branches where minimal utility is under previous maximized value
+            if max_utility >= beta:
+                break
+
+            # set a new possible best case
+            if max_utility > alpha:
+                alpha = max_utility
+
+
+        return (best_move, max_utility)
 
     def eval(self, grid):
         """
@@ -78,17 +154,30 @@ class PlayerAI(BaseAI):
         This is the heuristic function that evaluates board states
         """
         max_tile, max_on_side, smoothing_sum, matching_count, outer_score, closeness, utility = self.getGridStats(grid)
-        max_tile_factor = 10 * math.log(max_tile, 2)
-        cell_factor = 10 * len(grid.getAvailableCells())
-        smoothing_factor = 5 * math.log(smoothing_sum, 2)
-        matching_factor = 2 * math.log(matching_count, 2)
-        outer_factor = 5 * math.log(outer_score)
-        closeness_factor = 5 * closeness
-        utility_factor = -2 * math.log(max(utility, 1))
-        max_in_corner_factor = 25 * max_on_side
+        #max_tile, outer_score = self.getSimpleStats(grid)
+        max_tile_factor = 50 * math.log(max_tile, 2)
+        cell_factor = 100 * max_tile * len(grid.getAvailableCells())
+        smoothing_factor = 15 * math.log(smoothing_sum, 2)
+        matching_factor = 5 * math.log(matching_count, 2)
+        outer_factor = 10 * math.log(outer_score)
+        closeness_factor = 10 * closeness
+        utility_factor = -4 * math.log(max(utility, 1))
+        max_in_corner_factor = 20 * max_tile * max_on_side
 
-        print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}, utility: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor, utility_factor))
+        #print("max: {}, cell: {}, outer: {}".format(max_tile_factor, cell_factor, outer_factor))
+        #return max_tile_factor + cell_factor + outer_factor
+        #print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}, utility: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor, utility_factor))
         return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor + utility_factor)
+
+    def getSimpleStats(self, grid):
+        m = grid.getMaxTile()
+        sm = 0
+
+        for i in range(len(grid.map) - 1):
+            for j in range(len(grid.map[i]) - 1):
+                if (i == 0 or i == 3 or j == 0 or j == 3):
+                    sm = sm + grid.getCellValue((i, j))
+        return m, max(sm, 1)
 
     def getGridStats(self, grid):
         """
