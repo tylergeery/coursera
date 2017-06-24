@@ -77,7 +77,7 @@ class PlayerAI(BaseAI):
         """
         self.lastMove = move
 
-        if move >> 1:
+        if move is not None and move >> 1:
             self.lastHorizontal = move
         else:
             self.lastVertical = move
@@ -147,55 +147,42 @@ class PlayerAI(BaseAI):
 
         return (best_move, max_utility)
 
+    # def eval2(self, grid):
+    #     """
+    #     Evaluate the current grid state
+    #
+    #     This is the heuristic function that evaluates board states
+    #     """
+    #     max_tile, max_on_side, smoothing_sum, matching_count, outer_score, closeness, utility = self.getGridStats(grid)
+    #     #max_tile, outer_score = self.getSimpleStats(grid)
+    #     max_tile_factor = 50 * math.log(max_tile, 2)
+    #     cell_factor = 100 * max_tile * len(grid.getAvailableCells())
+    #     smoothing_factor = 15 * math.log(smoothing_sum, 2)
+    #     matching_factor = 5 * math.log(matching_count, 2)
+    #     outer_factor = 10 * math.log(outer_score)
+    #     closeness_factor = 10 * closeness
+    #     utility_factor = -4 * math.log(max(utility, 1))
+    #     max_in_corner_factor = 20 * max_tile * max_on_side
+    #
+    #     #print("max: {}, cell: {}, outer: {}".format(max_tile_factor, cell_factor, outer_factor))
+    #     #return max_tile_factor + cell_factor + outer_factor
+    #     #print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}, utility: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor, utility_factor))
+    #     return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor + utility_factor)
+
     def eval(self, grid):
-        """
-        Evaluate the current grid state
-
-        This is the heuristic function that evaluates board states
-        """
-        max_tile, max_on_side, smoothing_sum, matching_count, outer_score, closeness, utility = self.getGridStats(grid)
-        #max_tile, outer_score = self.getSimpleStats(grid)
-        max_tile_factor = 50 * math.log(max_tile, 2)
-        cell_factor = 100 * max_tile * len(grid.getAvailableCells())
-        smoothing_factor = 15 * math.log(smoothing_sum, 2)
-        matching_factor = 5 * math.log(matching_count, 2)
-        outer_factor = 10 * math.log(outer_score)
-        closeness_factor = 10 * closeness
-        utility_factor = -4 * math.log(max(utility, 1))
-        max_in_corner_factor = 20 * max_tile * max_on_side
-
-        #print("max: {}, cell: {}, outer: {}".format(max_tile_factor, cell_factor, outer_factor))
-        #return max_tile_factor + cell_factor + outer_factor
-        #print("max: {}, cell: {}, smoothing: {}, matching: {}, outer: {}, closeness: {}, utility: {}".format(max_tile_factor, cell_factor, smoothing_factor, matching_factor, outer_factor, closeness_factor, utility_factor))
-        return (max_tile_factor + cell_factor + smoothing_factor + matching_factor + outer_factor + closeness_factor + max_in_corner_factor + utility_factor)
-
-    def getSimpleStats(self, grid):
-        m = grid.getMaxTile()
-        sm = 0
-
-        for i in range(len(grid.map) - 1):
-            for j in range(len(grid.map[i]) - 1):
-                if (i == 0 or i == 3 or j == 0 or j == 3):
-                    sm = sm + grid.getCellValue((i, j))
-        return m, max(sm, 1)
-
-    def getGridStats(self, grid):
-        """
-        Get the sum of absolute value of differences between grid members and neighbors
-        """
-        smoothing_sum = 1
-        matching_count = 1
-        outer_stats = 0
-        closeness = 0
-        utility = 0
+        mx = grid.getMaxTile()
+        log_mx = math.log(mx, 2)
+        sm_diff = 1
+        corner_diff = 1
         max_pos = (0,0)
-        max_tile = grid.getMaxTile()
         found = False
+        low_count = 0
+        totals = [0,0,0,0]
 
         # get max tile pos
         for i in range(len(grid.map) - 1):
             for j in range(len(grid.map[i]) - 1):
-                if (max_tile == grid.getCellValue((i, j))):
+                if (mx == grid.getCellValue((i, j))):
                     max_pos = (i,j)
                     found = True
                     break
@@ -203,61 +190,147 @@ class PlayerAI(BaseAI):
             if found:
                 break
 
-        max_on_side = (max_pos[0] == 0 or max_pos[0] == 3 or max_pos[1] == 0 or max_pos[1] == 3)
+        max_in_corner = found and ((max_pos[0] == 0 or max_pos[0] == 3) and (max_pos[1] == 0 or max_pos[1] == 3))
         for i in range(len(grid.map) - 1):
             for j in range(len(grid.map[i]) - 1):
                 value = grid.getCellValue((i, j))
-                right_value = grid.getCellValue((i, j+1))
-                lower_value = grid.getCellValue((i+1, j))
+                right_value = self.findRightCellValue(grid, [i, j])
+                lower_value = self.findLowerCellValue(grid, [i, j])
 
-                if value != max_tile:
-                    utility += self.calculateUtility(value, (i,j), max_tile, max_pos)
+                log_value = math.log(max(value, 1), 2)
+                log_right = math.log(max(right_value, 1), 2)
+                log_lower = math.log(max(lower_value, 1), 2)
 
-                if value == right_value and value > 0:
-                    matching_count += right_value
-                if value == lower_value and value > 0:
-                    matching_count += lower_value
+                if value > 0 and right_value > 0:
+                    sm_diff -= abs(log_value - log_right)
+                if value > 0 and lower_value > 0:
+                    sm_diff -= abs(log_value - log_lower)
 
-                if value > 0 and right_value > 0 and abs(math.log(value, 2) - math.log(right_value, 2)) == 1:
-                    closeness += 1
-                if value > 0 and lower_value > 0 and abs(math.log(value, 2) - math.log(lower_value, 2)) == 1:
-                    closeness += 1
+                if right_value > 0 and value > right_value:
+                    totals[0] += abs(log_value - log_right)
+                elif value > 0 and right_value > value:
+                    totals[1] += abs(log_right - log_value)
 
-                if i == 0:
-                    smoothing_sum += abs(value - grid.getCellValue((3, j)))
-                    outer_stats += value - grid.getCellValue((1, j))
-                if j == 0:
-                    smoothing_sum += abs(value - grid.getCellValue((i, 3)))
-                    outer_stats += value - grid.getCellValue((i, 1))
+                if lower_value > 0 and value > lower_value:
+                    totals[2] += abs(log_value - log_lower)
+                elif value > 0 and lower_value > value:
+                    totals[3] += abs(log_lower - log_value)
 
-                if i == 3:
-                    outer_stats += value - grid.getCellValue((2, j))
-                if j == 3:
-                    outer_stats += value - grid.getCellValue((i, 2))
+                if log_value < (log_mx - 2):
+                    low_count -= 1
 
+        # build heuristic factors
+        sm = 0.5 * sm_diff
+        available = 3 * len(grid.getAvailableCells())
+        corner = (1/corner_diff) * log_mx
+        max_corner = 10 * int(max_in_corner)
+        monotonicity = max(totals[0], totals[1]) + max(totals[2], totals[3])
+        low = low_count
 
-        return (max_tile, max_on_side, smoothing_sum, matching_count, max(outer_stats, 1), closeness, utility)
+        print("sm: {}, available: {}, monotonicity: {}".format(int(sm), int(available), int(monotonicity)))
 
-    def isMaxInCorner(self, grid, max_value):
-        """
-        Is the max grid value in the corner??
-        Returns: 1 or 0
-        """
-        if grid.getCellValue((0,0)) == max_value or grid.getCellValue((0,3)) == max_value or grid.getCellValue((3,0)) == max_value or grid.getCellValue((3,3)) == max_value:
-            return 1
+        return available + sm + monotonicity + mx
 
+    def findRightCellValue(self, grid, pos):
+        pos[0] += 1
+
+        while (pos[0] < 4):
+            value = grid.getCellValue(pos)
+            if value > 0:
+                return value
+
+            pos[0] += 1
         return 0
 
-    def calculateUtility(self, value, pos, max_value, max_pos):
-        """
-        Get the utility of a spot
+    def findLowerCellValue(self, grid, pos):
+        pos[1] += 1
 
-        Higher is worse
-        """
-        if value <= 0 or max_value <= 0:
-            return 0
+        while (pos[1] < 4):
+            value = grid.getCellValue(pos)
+            if value > 0:
+                return value
 
-        distance = abs(max_pos[0] - pos[0]) + abs(max_pos[1] - pos[1])
-        log_diff = math.log(max_value, 2) - math.log(value, 2)
+            pos[1] += 1
+        return 0
+    # def getGridStats(self, grid):
+    #     """
+    #     Get the sum of absolute value of differences between grid members and neighbors
+    #     """
+    #     smoothing_sum = 1
+    #     matching_count = 1
+    #     outer_stats = 0
+    #     closeness = 0
+    #     utility = 0
+    #     max_pos = (0,0)
+    #     max_tile = grid.getMaxTile()
+    #     found = False
+    #
+    #     # get max tile pos
+    #     for i in range(len(grid.map) - 1):
+    #         for j in range(len(grid.map[i]) - 1):
+    #             if (max_tile == grid.getCellValue((i, j))):
+    #                 max_pos = (i,j)
+    #                 found = True
+    #                 break
+    #
+    #         if found:
+    #             break
+    #
+    #     max_on_side = (max_pos[0] == 0 or max_pos[0] == 3 or max_pos[1] == 0 or max_pos[1] == 3)
+    #     for i in range(len(grid.map) - 1):
+    #         for j in range(len(grid.map[i]) - 1):
+    #             value = grid.getCellValue((i, j))
+    #             right_value = grid.getCellValue((i, j+1))
+    #             lower_value = grid.getCellValue((i+1, j))
+    #
+    #             if value != max_tile:
+    #                 utility += self.calculateUtility(value, (i,j), max_tile, max_pos)
+    #
+    #             if value == right_value and value > 0:
+    #                 matching_count += right_value
+    #             if value == lower_value and value > 0:
+    #                 matching_count += lower_value
+    #
+    #             if value > 0 and right_value > 0 and abs(math.log(value, 2) - math.log(right_value, 2)) == 1:
+    #                 closeness += 1
+    #             if value > 0 and lower_value > 0 and abs(math.log(value, 2) - math.log(lower_value, 2)) == 1:
+    #                 closeness += 1
+    #
+    #             if i == 0:
+    #                 smoothing_sum += abs(value - grid.getCellValue((3, j)))
+    #                 outer_stats += value - grid.getCellValue((1, j))
+    #             if j == 0:
+    #                 smoothing_sum += abs(value - grid.getCellValue((i, 3)))
+    #                 outer_stats += value - grid.getCellValue((i, 1))
+    #
+    #             if i == 3:
+    #                 outer_stats += value - grid.getCellValue((2, j))
+    #             if j == 3:
+    #                 outer_stats += value - grid.getCellValue((i, 2))
+    #
+    #
+    #     return (max_tile, max_on_side, smoothing_sum, matching_count, max(outer_stats, 1), closeness, utility)
 
-        return math.log(value, 2) * abs(distance - log_diff)
+    # def isMaxInCorner(self, grid, max_value):
+    #     """
+    #     Is the max grid value in the corner??
+    #     Returns: 1 or 0
+    #     """
+    #     if grid.getCellValue((0,0)) == max_value or grid.getCellValue((0,3)) == max_value or grid.getCellValue((3,0)) == max_value or grid.getCellValue((3,3)) == max_value:
+    #         return 1
+    #
+    #     return 0
+
+    # def calculateUtility(self, value, pos, max_value, max_pos):
+    #     """
+    #     Get the utility of a spot
+    #
+    #     Higher is worse
+    #     """
+    #     if value <= 0 or max_value <= 0:
+    #         return 0
+    #
+    #     distance = abs(max_pos[0] - pos[0]) + abs(max_pos[1] - pos[1])
+    #     log_diff = math.log(max_value, 2) - math.log(value, 2)
+    #
+    #     return math.log(value, 2) * abs(distance - log_diff)
