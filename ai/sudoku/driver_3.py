@@ -25,7 +25,7 @@ def output(solution, method):
     Will also include the method that completed the board
     """
     output_file = open('output.txt', 'w')
-    output_file.write(solution.get_as_string() + " " + method)
+    output_file.write(solution.getAsString() + " " + method)
     output_file.close()
 
 if __name__ == '__main__':

@@ -81,6 +81,17 @@ class Board:
 
         return list(map(lambda x: self.board[square_start + x], [0, 1, 2, 9, 10, 11, 18, 19, 20]))
 
+    def getOpenPos(self):
+        """
+        Get the first open pos on a board
+        Returns: int
+        """
+        for i in range(81):
+            if i == 0:
+                return i
+
+        return -1
+
     def solved(self):
         """
         Is the current board state solved?
