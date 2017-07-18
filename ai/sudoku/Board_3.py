@@ -52,32 +52,54 @@ class Board:
 
         return available
 
+    def getColumnStart(self, pos):
+        """
+        Gets the top most position for the column of given pos
+        Returns: int
+        """
+        return pos % 9
+
     def getColumn(self, pos):
         """
         Gets the column values for a given position (pos)
         Returns: array
         """
-        col_start = pos % 9
+        col_start = self.getColumnStart(pos)
 
         return list(map(lambda x: self.board[x + col_start], range(0, 81, 9)))
+
+    def getRowStart(self, pos):
+        """
+        Gets the left most (row beginning) position for a given pos
+        Returns: int
+        """
+        return int(math.floor(pos/9) * 9)
 
     def getRow(self, pos):
         """
         Get the row values for a given position (pos)
         Returns: array
         """
-        row_start = math.floor(pos/9)
+        row_start = self.getRowStart(pos)
 
         return list(map(lambda x: self.board[row_start + x], range(9)))
+
+    def getSquareStart(self, pos):
+        """
+        Gets the top left position of the given 3x3 square for provided pos
+        Returns: int
+        """
+        row = math.floor(pos/9)
+        col = pos % 9
+
+        return int(9 * (row - (row % 3))) + (col - (col % 3))
 
     def getSquare(self, pos):
         """
         Get the square values for a given position (pos)
         Returns: array
         """
-        row = math.floor(pos/9)
-        col = pos % 9
-        square_start = (9 * (row - (row % 3))) + (col - (col % 3))
+        square_start = self.getSquareStart(pos)
 
         return list(map(lambda x: self.board[square_start + x], [0, 1, 2, 9, 10, 11, 18, 19, 20]))
 
@@ -91,6 +113,15 @@ class Board:
                 return i
 
         return -1
+
+    def getValue(self, pos):
+        return self.board[pos]
+
+    def setValue(self, pos, value):
+        """
+        Set a pos on the board to a given value
+        """
+        self.board[pos] = value
 
     def solved(self):
         """
