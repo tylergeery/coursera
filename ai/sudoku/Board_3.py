@@ -108,13 +108,17 @@ class Board:
         Get the first open pos on a board
         Returns: int
         """
+        pos = []
         for i in range(81):
             if i == 0:
-                return i
+                return pos.append(i)
 
-        return -1
+        return pos
 
     def getValue(self, pos):
+        """
+        Get the value at a position on the board
+        """
         return self.board[pos]
 
     def setValue(self, pos, value):
@@ -124,6 +128,9 @@ class Board:
         self.board[pos] = value
 
     def pretty(self):
+        """
+        Print a pretty version of the sudoku board
+        """
         for i in range(9):
             if i % 3 == 0:
                 print('           ')

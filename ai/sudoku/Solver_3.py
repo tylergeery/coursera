@@ -63,6 +63,9 @@ class Solver:
         Implements Backtracking Search algorithm
         Returns: Board
         """
+        if (self.board.solved()):
+            return self.board
+        
         return self.board
 
     def inSameSquare(self, pos1, pos2):
