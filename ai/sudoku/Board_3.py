@@ -103,18 +103,6 @@ class Board:
 
         return list(map(lambda x: self.board[square_start + x], [0, 1, 2, 9, 10, 11, 18, 19, 20]))
 
-    def getOpenPos(self):
-        """
-        Get the first open pos on a board
-        Returns: int
-        """
-        pos = []
-        for i in range(81):
-            if i == 0:
-                return pos.append(i)
-
-        return pos
-
     def getValue(self, pos):
         """
         Get the value at a position on the board

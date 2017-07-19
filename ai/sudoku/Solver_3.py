@@ -58,14 +58,28 @@ class Solver:
 
         return revised
 
-    def BTS(self):
+    def BTS(self, depth=1):
         """
         Implements Backtracking Search algorithm
         Returns: Board
         """
         if (self.board.solved()):
             return self.board
-        
+
+        unassigned = self.domain.getOpenPos()
+
+        for value in self.board.getAvailableValues(unassigned):
+            self.board.setValue(unassigned, value)
+            #self.domain.updateNeighbors(unassigned)
+
+            #if depth < 10:
+            self.BTS(depth + 1)
+            self.board.pretty()
+            if self.board.solved():
+                return self.board
+
+            self.board.setValue(unassigned, 0)
+            #self.domain.updateNeighbors(unassigned)
         return self.board
 
     def inSameSquare(self, pos1, pos2):
