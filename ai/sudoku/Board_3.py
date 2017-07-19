@@ -123,6 +123,21 @@ class Board:
         """
         self.board[pos] = value
 
+    def pretty(self):
+        for i in range(9):
+            if i % 3 == 0:
+                print('           ')
+
+            row_str = ''
+            for j in range(9):
+                if j % 3 == 0:
+                    row_str += '|'
+                row_str += str(self.board[i*9 + j])
+            row_str += '|'
+
+            print(row_str.replace('0', ' '))
+        print('           ')
+
     def solved(self):
         """
         Is the current board state solved?

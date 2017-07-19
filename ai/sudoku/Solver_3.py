@@ -13,33 +13,46 @@ class Solver:
         Implements the AC3 algorithm
         Returns: Board
         """
-
         while len(self.queue) > 0:
             constraint = self.queue.pop(0)
 
-            print(len(self.queue))
             if self.revised(constraint):
-                if len(self.domain.getDomainValues(constraint[0])) == 0:
-                    print('stopping at: ', constraint[0])
+                domain_values = self.domain.getDomainValues(constraint[0])
+
+                if len(domain_values) == 0:
+                    print('could not be solved, stopping at: ', constraint[0])
                     break
+                if len(domain_values) == 1:
+                    self.board.setValue(constraint[0], domain_values[0])
+
                 self.addPositionConstraints(constraint[0])
 
-        #print(self.domain.domains)
         for i in range(81):
             if self.board.getValue(i) == 0:
-                values = self.domain.getDomainValues(i)
+                values = self.board.getAvailableValues(i)
+
                 if (len(values) == 1):
                     self.board.setValue(i, values[0])
 
         return self.board
 
     def revised(self, constraint):
+        if self.board.getValue(constraint[0]) != 0:
+            return False
+
         revised = False
+        available_values = self.board.getAvailableValues(constraint[0])
+
         for value in self.domain.getDomainValues(constraint[0]):
+            neighbor_has_available_values = True
             neighbor_domain_values = self.domain.getDomainValues(constraint[1])
 
-            if (len(neighbor_domain_values) == 0 or
-                (len(neighbor_domain_values) == 1 and neighbor_domain_values[0] == value)):
+            if len(neighbor_domain_values) == 0:
+                neighbor_has_available_values = False
+            elif len(neighbor_domain_values) == 1 and neighbor_domain_values[0] == value:
+                neighbor_has_available_values = False
+
+            if not neighbor_has_available_values or value not in available_values:
                 self.domain.removeValue(constraint[0], value)
                 revised = True
 
@@ -69,13 +82,13 @@ class Solver:
 
         for i in range(9):
             if (row_start + i) != pos:
-                self.queue.append((pos, row_start + i))
+                self.queue.append((row_start + i, pos))
             if ((col_start + 9*i) != pos):
-                self.queue.append((pos, col_start + 9*i))
+                self.queue.append((col_start + 9*i, pos))
 
         for offset in [0,1,2,9,10,11,18,19,20]:
             if (sq_start + offset) != pos:
-                self.queue.append((pos, sq_start + offset))
+                self.queue.append((sq_start + offset, pos))
 
     def initializeConstraints(self):
         """

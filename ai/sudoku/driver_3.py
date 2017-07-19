@@ -11,13 +11,14 @@ def solve(board):
     Solves the given sudoku board,
     first attempting the AC3 algorithm, then backtracking (BTS)
     """
+    #board.pretty()
     solver = Solver(board)
     solution = solver.AC3()
 
     if (solution.solved()):
         return (solution, 'AC3')
 
-    print(solution.board)
+    #solution.pretty()
     return (solver.BTS(), 'BTS')
 
 def output(solution, method):
