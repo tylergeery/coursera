@@ -74,7 +74,6 @@ class Solver:
 
             #if depth < 10:
             self.BTS(depth + 1)
-            self.board.pretty()
             if self.board.solved():
                 return self.board
 
