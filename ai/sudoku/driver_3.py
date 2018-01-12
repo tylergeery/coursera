@@ -13,13 +13,13 @@ def solve(board):
     """
     #board.pretty()
     solver = Solver(board)
-    solution = solver.AC3()
+    #solution = solver.AC3()
 
-    if (solution.solved()):
-        return (solution, 'AC3')
+    # if (solution.solved()):
+    #     return (solution, 'AC3')
 
     #solution.pretty()
-    return (solver.BTS(), 'BTS')
+    return (solver.BTS(board), 'BTS')
 
 def output(solution, method):
     """
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # create board respresentation
     board = get_board(sys.argv[1])
-
+    # board.pretty()
     # solve
     solution, method = solve(board)
 

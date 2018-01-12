@@ -4,7 +4,7 @@ while read line; do
     break
   fi
   python3 driver_3.py $line2
-  solution=$(head -n 1 output.txt)
+  solution=$(head -1 output.txt)
 
   if [[ $line == $solution ]]; then
     printf "\e[1;32m%s\n%s\n\n\e[m" "$line" "$solution"

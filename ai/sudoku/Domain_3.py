@@ -29,7 +29,10 @@ class Domain:
         """
         for i in range(1, 10):
             for j in range(81):
-                if len(self.domains[j]) == i and self.board.getValue(j) == 0:
+                if self.board.getValue(j) != 0:
+                    continue;
+
+                if len(self.domains[j]) == i:
                     return j
 
         return -1

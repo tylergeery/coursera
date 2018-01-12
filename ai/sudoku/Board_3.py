@@ -152,3 +152,16 @@ class Board:
                 return False
 
         return True
+
+    def getHeuristic(self):
+        """
+        What is the current value of the board?
+        Heuristic: spaces filled out
+        """
+        value = len(self.board)
+
+        for i in self.board:
+            if int(i) == 0:
+                value -= 1
+
+        return value
